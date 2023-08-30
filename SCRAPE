@@ -1,41 +1,51 @@
-#BEESHEET SCRAPE
+#BEESHEET SCRAPE to XML
 
 import requests
 from bs4 import BeautifulSoup
 import json
+import os
+import sys
+from xml.etree import ElementTree as ET
 
-# URL of the Spelling Bee page
-url = "https://www.nytimes.com/puzzles/spelling-bee"
+def scrape_bee(url):
+    r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'})
+    soup = BeautifulSoup(r.text, 'html.parser')
+    
+    element = soup.find('div', class_='pz-game-screen')
+    element = element.find('script')
+    
+    data = element.contents[0].replace('window.gameData = ', '')
+    data = json.loads(data)
+    
+    return data
 
-# Send a GET request to the URL
-response = requests.get(url)
-html_content = response.text
+def save_to_xml(data, filename):
+    root = ET.Element('data')
+    today = ET.SubElement(root, 'today')
+    yesterday = ET.SubElement(root, 'yesterday')
+    
+    for day, day_data in data.items():
+        if day == 'today':
+            current_day = today
+        elif day == 'yesterday':
+            current_day = yesterday
+        else:
+            continue
+        
+        for key, value in day_data.items():
+            if isinstance(value, list):
+                sub_element = ET.SubElement(current_day, key)
+                for item in value:
+                    sub_sub_element = ET.SubElement(sub_element, 'item')
+                    sub_sub_element.text = item
+            else:
+                sub_element = ET.SubElement(current_day, key)
+                sub_element.text = str(value)
+    
+    tree = ET.ElementTree(root)
+    tree.write(filename, encoding='utf-8', xml_declaration=True)
 
-# Parse the HTML content using BeautifulSoup
-soup = BeautifulSoup(html_content, "html.parser")
-
-# Find the script elements containing the Bee data
-script_elements = soup.find_all("script", {"type": "application/ld+json"})
-
-# Initialize variables to store data
-word_list = []
-center_letter = ""
-
-# Loop through the script elements to find the relevant data
-for script in script_elements:
-    script_data = json.loads(script.string)
-    if script_data.get("@type") == "Game":
-        word_list = script_data.get("wordList")
-        center_letter = script_data.get("centerLetter")
-
-# Combine the data into a single dictionary
-beesheet_data = {
-    "word_list": word_list,
-    "center_letter": center_letter
-}
-
-# Save the data to a JSON file
-with open("beesheet.json", "w") as json_file:
-    json.dump(beesheet_data, json_file, indent=4)
-
-print("Data scraped and saved to beesheet.json")
+if __name__ == '__main__':
+    url = 'https://www.nytimes.com/puzzles/spelling-bee'  # Change this URL if needed
+    scraped_data = scrape_bee(url)
+    save_to_xml(scraped_data, 'beesheet.xml')

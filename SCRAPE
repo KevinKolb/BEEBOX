@@ -1,0 +1,41 @@
+#BEESHEET SCRAPE
+
+import requests
+from bs4 import BeautifulSoup
+import json
+
+# URL of the Spelling Bee page
+url = "https://www.nytimes.com/puzzles/spelling-bee"
+
+# Send a GET request to the URL
+response = requests.get(url)
+html_content = response.text
+
+# Parse the HTML content using BeautifulSoup
+soup = BeautifulSoup(html_content, "html.parser")
+
+# Find the script elements containing the Bee data
+script_elements = soup.find_all("script", {"type": "application/ld+json"})
+
+# Initialize variables to store data
+word_list = []
+center_letter = ""
+
+# Loop through the script elements to find the relevant data
+for script in script_elements:
+    script_data = json.loads(script.string)
+    if script_data.get("@type") == "Game":
+        word_list = script_data.get("wordList")
+        center_letter = script_data.get("centerLetter")
+
+# Combine the data into a single dictionary
+beesheet_data = {
+    "word_list": word_list,
+    "center_letter": center_letter
+}
+
+# Save the data to a JSON file
+with open("beesheet.json", "w") as json_file:
+    json.dump(beesheet_data, json_file, indent=4)
+
+print("Data scraped and saved to beesheet.json")

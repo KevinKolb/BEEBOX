@@ -1,1 +1,33 @@
+#Copy the words (answers) to a .csv file
 
+import xml.etree.ElementTree as ET
+import csv
+import os
+import datetime
+
+# Parse the XML file
+tree = ET.parse('beesheet.xml')
+root = tree.getroot()
+
+# Extract data from the XML
+answers = root.find('answers').text.split(', ')
+displayDate = root.find('displayDate').text
+formatted_date = datetime.datetime.strptime(displayDate, "%B %d, %Y").strftime("%Y_%m_%d")
+
+# Define the CSV file path
+csv_folder = 'templates'
+csv_filename = f'{formatted_date} BEE ANSWERS.csv'
+csv_path = os.path.join(csv_folder, csv_filename)
+
+# Write the data to the CSV file
+with open(csv_path, 'w', newline='') as csvfile:
+    csv_writer = csv.writer(csvfile)
+    csv_writer.writerow(["NY TIMES SPELLING BEE WORDS"])
+    csv_writer.writerow([displayDate])
+    csv_writer.writerow(["http://thegamebureau.com/beebox"])
+    csv_writer.writerow([])  # Add an empty line
+    for answer in answers:
+        cleaned_answer = answer.replace("'", "").strip('[]')
+        csv_writer.writerow([cleaned_answer])
+
+print(f'CSV file saved as {csv_path}')

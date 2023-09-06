@@ -1,0 +1,42 @@
+import requests
+from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
+import os
+import json  # Add this import statement
+
+def scrape_bee(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'
+    }
+    r = requests.get(url, headers=headers)
+    soup = BeautifulSoup(r.text, 'html.parser')
+
+    element = soup.find('div', class_='pz-game-screen')
+    element = element.find('script')
+
+    data = element.contents[0].replace('window.gameData = ', '')
+    today_data = json.loads(data).get('today', {})  # Get the 'today' dictionary, default to an empty dictionary if not found
+
+    # Create an XML root element
+    root = ET.Element("SpellingBeeData")
+
+    # Add elements to the XML tree based on the 'today' data
+    for key, value in today_data.items():
+        sub_element = ET.SubElement(root, key)
+        sub_element.text = str(value)
+
+    # Create an ElementTree from the root element
+    tree = ET.ElementTree(root)
+
+    # Save the ElementTree to an XML file
+    xml_filename = 'beesheet.xml'
+    tree.write(xml_filename)
+
+    print(f"Data saved to {xml_filename}")
+
+if __name__ == '__main__':
+    # The URLs you want to scrape
+    urls = ['https://www.nytimes.com/puzzles/spelling-bee']
+
+    for u in urls:
+        scrape_bee(u.strip())

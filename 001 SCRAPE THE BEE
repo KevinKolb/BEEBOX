@@ -1,10 +1,8 @@
-# RUN THIS PYTHON CODE AND IT WILL GATHER TODAY'S DATA FROM THE NY TIMES SPELLING BEE AND SAVE IT TO BEESHEET.XML.
-
 import requests
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 import os
-import json  # Add this import statement
+import json
 
 def scrape_bee(url):
     headers = {
@@ -20,12 +18,30 @@ def scrape_bee(url):
     today_data = json.loads(data).get('today', {})  # Get the 'today' dictionary, default to an empty dictionary if not found
 
     # Create an XML root element
-    root = ET.Element("SpellingBeeData")
+    root = ET.Element("today")
 
-    # Add elements to the XML tree based on the 'today' data
+    # Add elements to the XML tree based on the 'today' data, excluding 'validLetters'
+    excluded_keys = ('freeExpiration', 'id', 'editor', 'expiration', 'validLetters')
     for key, value in today_data.items():
-        sub_element = ET.SubElement(root, key)
-        sub_element.text = str(value)
+        if key not in excluded_keys:
+            # Convert value to a string and remove single quotes, square brackets, and leading/trailing spaces
+            value = str(value).replace("'", "").replace('[', '').replace(']', '').strip()
+
+            # Special handling for 'outerLetters' to split into six separate keys
+            if key == 'outerLetters':
+                letters_list = value.split(', ')
+                for i in range(6):
+                    sub_element = ET.SubElement(root, f'letter{i + 1}')
+                    sub_element.text = letters_list[i] if i < len(letters_list) else ''
+            elif key == 'answers':
+                # Split 'answers' into separate pieces labeled as '<answer>'
+                answers_list = value.split(', ')
+                for answer in answers_list:
+                    sub_element = ET.SubElement(root, 'answer')
+                    sub_element.text = answer
+            else:
+                sub_element = ET.SubElement(root, key)
+                sub_element.text = value
 
     # Create an ElementTree from the root element
     tree = ET.ElementTree(root)
